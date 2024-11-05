@@ -76,15 +76,27 @@ WSGI_APPLICATION = 'demo.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
+    'legacy': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'csci467',
         'USER': 'student',
         'PASSWORD': 'student',
         'HOST': 'blitz.cs.niu.edu',
         'PORT': '3306',
+    },
+
+'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'csci_513_database',  # Replace with your new database name
+        'USER': 'csci_513_proj',            # Replace with the username for the new database
+        'PASSWORD': 'Muntazir123@',    # Replace with the password for the new database
+        'HOST': 'localhost',           # Assuming this database is local, change if necessary
+        'PORT': '3306',                # Port for MySQL
     }
+
 }
+
+
 
 # 'blitz.cs.niu.edu',
 # Password validation
@@ -127,3 +139,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DATABASE_ROUTERS = ['demo.db_routers.LegacyRouter']
+

@@ -1,0 +1,48 @@
+<!-- checkout.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Checkout</title>
+  <link
+    rel="stylesheet"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+  />
+</head>
+<body>
+  <div class="container mt-5">
+    <h2>Checkout</h2>
+    <form method="post" id="checkout-form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="btn btn-primary">Submit Payment</button>
+    </form>
+
+    <div id="result" class="mt-4"></div>
+
+    <script>
+      document.getElementById('checkout-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        const response = await fetch("", {
+          method: "POST",
+          body: formData,
+        });
+
+        const result = await response.json();
+        const resultDiv = document.getElementById('result');
+        if (result.status === "success") {
+          resultDiv.innerHTML = `
+            <p class="text-success">${result.message}</p>
+            <p><strong>Authorization Number:</strong> ${result.authorization_number}</p>
+            <p><strong>Date and Time of Transaction:</strong> ${result.transaction_time}</p>
+          `;
+        } else {
+          resultDiv.innerHTML = `<p class="text-danger">${result.message}</p>`;
+        }
+      }
+    </script>
+  </div>
+</body>
+</html>

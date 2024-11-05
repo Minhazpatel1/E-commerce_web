@@ -1,0 +1,45 @@
+<!-- cart_detail.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shopping Cart</title>
+  <link
+    rel="stylesheet"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+  />
+</head>
+<body>
+  <div class="container">
+    <h1>Your Cart</h1>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in cart_items %}
+          <tr>
+            <td>{{ item.part.description }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ item.part.price }}</td>
+            <td>${{ item.total_price }}</td>
+          </tr>
+        {% endfor %}
+        <tr>
+          <td colspan="3" class="text-right"><strong>Total Price:</strong></td>
+          <td>${{ total_price }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <a href="#" class="btn btn-primary">Proceed to Checkout</a>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

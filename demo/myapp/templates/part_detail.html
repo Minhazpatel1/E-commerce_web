@@ -1,96 +1,36 @@
+<!-- part_detail.html -->
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Part Details</title>
-    <link
-      rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-    />
-    <style>
-      body {
-        background-color: #f8f9fa;
-      }
-      .navbar {
-        background-color: #343a40;
-      }
-      .navbar-brand,
-      .nav-link {
-        color: white !important;
-      }
-      .container {
-        margin-top: 20px;
-      }
-      .card {
-        margin-bottom: 20px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      }
-      h1 {
-        color: #007bff;
-      }
-      .card-title {
-        color: #007bff;
-      }
-    </style>
-  </head>
-  <body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
-      <a class="navbar-brand" href="#">My Django App</a>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-toggle="collapse"
-        data-target="#navbarNav"
-        aria-controls="navbarNav"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item active">
-            <a class="nav-link" href="#">Home</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#">About</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#">Contact</a>
-          </li>
-        </ul>
-      </div>
-    </nav>
-    <div class="container">
-      <h1>Parts List</h1>
-      <p><strong>Current Time (Chicago):</strong> {{ current_time|date:"D, d M Y H:i:s" }}</p>
-
-      <div class="row">
-        {% for part in parts %}
-          <div class="col-md-4">
-            <div class="card">
-              <img
-                src="{{ part.picture_url }}"
-                class="card-img-top img-fluid"
-                alt="Part Image"
-                style="max-height: 200px; object-fit: cover;"
-              />
-              <div class="card-body">
-                <h5 class="card-title">Part Number: {{ part.number }}</h5>
-                <p class="card-text">
-                  <strong>Description:</strong> {{ part.description }} <br />
-                  <strong>Price:</strong> ${{ part.price }} <br />
-                  <strong>Weight:</strong> {{ part.weight }} kg
-                </p>
-              </div>
+<head>
+  <meta charset="UTF-8">
+  <title>Part Details</title>
+  <link
+    rel="stylesheet"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+  />
+</head>
+<body>
+  <div class="container">
+    <h1>Available Parts</h1>
+    <p><strong>Current Time (Chicago):</strong> {{ current_time|date:"D, d M Y H:i:s" }}</p>
+    <div class="row">
+      {% for part in parts %}
+        <div class="col-md-4">
+          <div class="card mb-4 shadow-sm">
+            <img src="{{ part.picture_url }}" class="card-img-top" alt="{{ part.description }}" style="max-height: 200px; object-fit: cover;">
+            <div class="card-body">
+              <h5 class="card-title">{{ part.description }}</h5>
+              <p><strong>Price:</strong> ${{ part.price }}</p>
+              <p><strong>Weight:</strong> {{ part.weight }} kg</p>
+              <a href="{% url 'add_to_cart' part.number %}" class="btn btn-primary">Add to Cart</a>
             </div>
           </div>
-        {% endfor %}
-      </div>
+        </div>
+      {% endfor %}
     </div>
+  </div>
 
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
-  </body>
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
+</body>
 </html>
