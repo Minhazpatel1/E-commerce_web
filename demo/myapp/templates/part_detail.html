@@ -1,4 +1,3 @@
-<!-- part_detail.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,9 +9,26 @@
   />
 </head>
 <body>
-  <div class="container">
+  <!-- Navbar with Sign-In/Sign-Out -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container">
+      <a class="navbar-brand" href="#">My Store</a>
+      <div class="ml-auto">
+        {% if request.session.username %}
+          <!-- Display the username and logout button -->
+          <span class="navbar-text mr-3">Welcome, {{ request.session.username }}</span>
+          <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Logout</a>
+        {% else %}
+          <!-- Show Sign In and Register options -->
+          <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">Sign In</a>
+          <a href="{% url 'register' %}" class="btn btn-outline-success btn-sm">Register</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
     <h1>Available Parts</h1>
-    <p><strong>Current Time (Chicago):</strong> {{ current_time|date:"D, d M Y H:i:s" }}</p>
     <div class="row">
       {% for part in parts %}
         <div class="col-md-4">
@@ -22,7 +38,13 @@
               <h5 class="card-title">{{ part.description }}</h5>
               <p><strong>Price:</strong> ${{ part.price }}</p>
               <p><strong>Weight:</strong> {{ part.weight }} kg</p>
-              <a href="{% url 'add_to_cart' part.number %}" class="btn btn-primary">Add to Cart</a>
+              {% if request.session.username %}
+                <!-- Add to Cart button for logged-in users -->
+                <a href="{% url 'add_to_cart' part.number %}" class="btn btn-primary">Add to Cart</a>
+              {% else %}
+                <!-- Prompt login for non-authenticated users -->
+                <a href="{% url 'login' %}?next={% url 'part-detail' %}" class="btn btn-warning">Login to Add</a>
+              {% endif %}
             </div>
           </div>
         </div>

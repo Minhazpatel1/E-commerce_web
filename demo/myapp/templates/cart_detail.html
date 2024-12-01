@@ -1,4 +1,3 @@
-<!-- cart_detail.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,33 +9,86 @@
   />
 </head>
 <body>
-  <div class="container">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container">
+      <a class="navbar-brand" href="#">My Store</a>
+      <div class="ml-auto">
+        {% if request.session.username %}
+          <span class="navbar-text mr-3">Welcome, {{ request.session.username }}</span>
+          <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Logout</a>
+        {% else %}
+          <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">Sign In</a>
+          <a href="{% url 'register' %}" class="btn btn-outline-success btn-sm">Register</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  <!-- Cart Content -->
+  <div class="container mt-4">
     <h1>Your Cart</h1>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Quantity</th>
-          <th>Price</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in cart_items %}
-          <tr>
-            <td>{{ item.part.description }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>${{ item.part.price }}</td>
-            <td>${{ item.total_price }}</td>
-          </tr>
+
+    <!-- Display Messages -->
+    {% if messages %}
+      <div class="mt-4">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
         {% endfor %}
-        <tr>
-          <td colspan="3" class="text-right"><strong>Total Price:</strong></td>
-          <td>${{ total_price }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <a href="#" class="btn btn-primary">Proceed to Checkout</a>
+      </div>
+    {% endif %}
+
+    <!-- Check if Cart is Empty -->
+    {% if cart_items %}
+      <!-- Cart Table -->
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in cart_items %}
+            <tr>
+              <td>{{ item.part.description }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>${{ item.part.price }}</td>
+              <td>${{ item.total_price }}</td>
+              <td>
+                <!-- Increase and Decrease Buttons -->
+                <a href="{% url 'increase_quantity' item.id %}" class="btn btn-success btn-sm">+</a>
+                <a href="{% url 'decrease_quantity' item.id %}" class="btn btn-danger btn-sm">-</a>
+              </td>
+            </tr>
+          {% endfor %}
+          <tr>
+            <td colspan="3" class="text-right"><strong>Total Price:</strong></td>
+            <td>${{ total_price }}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Action Buttons -->
+      <div class="mt-3">
+        <a href="{% url 'part-detail' %}" class="btn btn-secondary">Continue Shopping</a>
+        <a href="{% url 'checkout' %}" class="btn btn-primary">Proceed to Checkout</a>
+      </div>
+    {% else %}
+      <!-- Display Empty Cart Message -->
+      <div class="alert alert-warning" role="alert">
+        Your cart is empty. <a href="{% url 'part-detail' %}" class="alert-link">Continue shopping</a>.
+      </div>
+    {% endif %}
   </div>
 
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
