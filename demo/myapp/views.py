@@ -10,91 +10,138 @@ from datetime import datetime
 from django.shortcuts import render
 from django.http import JsonResponse
 from .forms import CheckoutForm
-
-
-# # Part Detail View
-# def part_detail(request):
-#     # Check if the user is logged in by validating the session
-#     if not request.session.get('user_id'):
-#         messages.error(request, "You need to log in first.")
-#         return redirect('login')
-#
-#     # Fetch all parts from the database
-#     parts = Part.objects.all()
-#
-#     # Get the current time in UTC
-#     utc_time = timezone.now()
-#
-#     # Define the Chicago timezone using pytz
-#     chicago_tz = pytz.timezone('America/Chicago')
-#
-#     # Convert UTC time to Chicago timezone
-#     chicago_time = utc_time.astimezone(chicago_tz)
-#
-#     return render(request, 'part_detail.html', {
-#         'parts': parts,             # Pass all parts to the template
-#         'current_time': chicago_time,  # Pass the converted time to the template
-#         'username': request.session.get('username'),  # Pass the logged-in user's username
-#     })
-
-from django.shortcuts import render
 from .models import Part
 
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import Part, Product, CartItem, CustomUser
+
+
+def sync_products_from_legacy():
+    """
+    Syncs parts from the legacy database to the Product table.
+    """
+    legacy_parts = Part.objects.using('legacy').all()
+    for part in legacy_parts:
+        Product.objects.get_or_create(
+            number=part.number,
+            defaults={
+                'description': part.description,
+                'price': part.price,
+                'weight': part.weight,
+                'picture_url': part.picture_url,
+                'available_quantity': 100,  # Set default available quantity
+            }
+        )
+
+
 def part_detail(request):
-    # Fetch all parts from the legacy database
-    parts = Part.objects.using('legacy').all()
+    """
+    Displays available products with quantities.
+    """
+    sync_products_from_legacy()  # Sync legacy parts to the Product table
+    products = Product.objects.all()
+    return render(request, 'part_detail.html', {'products': products})
 
-    return render(request, 'part_detail.html', {
-        'parts': parts,
-    })
-
-
-# Add to Cart View
 def add_to_cart(request, part_id):
-    # Ensure the user is logged in
+    """
+    Add a part to the cart, decreasing available_quantity.
+    """
     if not request.session.get('user_id'):
         messages.error(request, "You need to log in first to add items to the cart.")
         return redirect('login')
 
-    # Fetch the part using the provided part ID
-    part = get_object_or_404(Part, number=part_id)
-
-    # Fetch the logged-in user
     user_id = request.session.get('user_id')
     user = get_object_or_404(CustomUser, id=user_id)
+    part = get_object_or_404(Product, id=part_id)
 
-    # Check if the item is already in the cart for this user
+    if part.available_quantity < 1:
+        messages.error(request, f"{part.description} is out of stock.")
+        return redirect('part-detail')
+
     cart_item, created = CartItem.objects.get_or_create(part=part, user=user)
-    if not created:
-        # If the item is already in the cart, display a message
-        messages.info(request, f"{part.description} is already in the cart!")
-    else:
-        # If the item is not in the cart, save it
+    if created:
         cart_item.save()
+        part.available_quantity -= 1  # Decrease available quantity
+        part.save()
         messages.success(request, f"{part.description} was added to the cart.")
+    else:
+        messages.info(request, f"{part.description} is already in your cart.")
 
     return redirect('cart_detail')
 
-
-# Cart Detail View
 def cart_detail(request):
-    # Ensure the user is logged in
+    """
+    Displays cart items for the logged-in user.
+    """
     if not request.session.get('user_id'):
         messages.error(request, "You need to log in to view the cart.")
         return redirect('login')
 
-    # Fetch the logged-in user
     user_id = request.session.get('user_id')
     user = get_object_or_404(CustomUser, id=user_id)
-
-    # Fetch cart items for the logged-in user
     cart_items = CartItem.objects.filter(user=user)
     total_price = sum(item.total_price for item in cart_items)
 
-    return render(request, 'cart_detail.html', {
-        'cart_items': cart_items,
-        'total_price': total_price,
-    })
+    return render(request, 'cart_detail.html', {'cart_items': cart_items, 'total_price': total_price})
+
+# new code ends here
+# def part_detail(request):
+#     # Fetch all parts from the legacy database
+#     parts = Part.objects.using('legacy').all()
+#
+#     return render(request, 'part_detail.html', {
+#         'parts': parts,
+#     })
+#
+#
+# # Add to Cart View
+# def add_to_cart(request, part_id):
+#     # Ensure the user is logged in
+#     if not request.session.get('user_id'):
+#         messages.error(request, "You need to log in first to add items to the cart.")
+#         return redirect('login')
+#
+#     # Fetch the part using the provided part ID
+#     part = get_object_or_404(Part, number=part_id)
+#
+#     # Fetch the logged-in user
+#     user_id = request.session.get('user_id')
+#     user = get_object_or_404(CustomUser, id=user_id)
+#
+#     # Check if the item is already in the cart for this user
+#     cart_item, created = CartItem.objects.get_or_create(part=part, user=user)
+#     if not created:
+#         # If the item is already in the cart, display a message
+#         messages.info(request, f"{part.description} is already in the cart!")
+#     else:
+#         # If the item is not in the cart, save it
+#         cart_item.save()
+#         messages.success(request, f"{part.description} was added to the cart.")
+#
+#     return redirect('cart_detail')
+#
+#
+# # Cart Detail View
+# def cart_detail(request):
+#     # Ensure the user is logged in
+#     if not request.session.get('user_id'):
+#         messages.error(request, "You need to log in to view the cart.")
+#         return redirect('login')
+#
+#     # Fetch the logged-in user
+#     user_id = request.session.get('user_id')
+#     user = get_object_or_404(CustomUser, id=user_id)
+#
+#     # Fetch cart items for the logged-in user
+#     cart_items = CartItem.objects.filter(user=user)
+#     total_price = sum(item.total_price for item in cart_items)
+#
+#     return render(request, 'cart_detail.html', {
+#         'cart_items': cart_items,
+#         'total_price': total_price,
+#     })
 
 
 # Increase Quantity View
@@ -117,25 +164,6 @@ def decrease_quantity(request, item_id):
         cart_item.delete()
         messages.info(request, f"{cart_item.part.description} removed from the cart.")
     return redirect('cart_detail')
-
-
-# Login View
-# def login_view(request):
-#     if request.method == 'POST':
-#         username = request.POST.get('username')
-#         password = request.POST.get('password')
-#
-#         try:
-#             user = CustomUser.objects.get(username=username, password=password)
-#             request.session['user_id'] = user.id
-#             request.session['username'] = user.username
-#             messages.success(request, f"Welcome, {user.name}!")
-#             return redirect('part-detail')
-#         except CustomUser.DoesNotExist:
-#             messages.error(request, "Invalid credentials. Please register.")
-#             return redirect('register')
-#
-#     return render(request, 'login.html')
 
 from django.shortcuts import render, redirect
 from django.contrib import messages

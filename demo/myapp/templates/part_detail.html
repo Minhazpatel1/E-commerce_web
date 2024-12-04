@@ -2,24 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Part Details</title>
-  <link
-    rel="stylesheet"
-    href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
-  />
+  <title>Products</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
 </head>
 <body>
-  <!-- Navbar with Sign-In/Sign-Out -->
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container">
       <a class="navbar-brand" href="#">My Store</a>
       <div class="ml-auto">
         {% if request.session.username %}
-          <!-- Display the username and logout button -->
           <span class="navbar-text mr-3">Welcome, {{ request.session.username }}</span>
           <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Logout</a>
         {% else %}
-          <!-- Show Sign In and Register options -->
           <a href="{% url 'login' %}" class="btn btn-outline-primary btn-sm">Sign In</a>
           <a href="{% url 'register' %}" class="btn btn-outline-success btn-sm">Register</a>
         {% endif %}
@@ -28,21 +22,20 @@
   </nav>
 
   <div class="container mt-4">
-    <h1>Available Parts</h1>
+    <h1>Available Products</h1>
     <div class="row">
-      {% for part in parts %}
+      {% for product in products %}
         <div class="col-md-4">
           <div class="card mb-4 shadow-sm">
-            <img src="{{ part.picture_url }}" class="card-img-top" alt="{{ part.description }}" style="max-height: 200px; object-fit: cover;">
+            <img src="{{ product.picture_url }}" class="card-img-top" alt="{{ product.description }}" style="max-height: 200px; object-fit: cover;">
             <div class="card-body">
-              <h5 class="card-title">{{ part.description }}</h5>
-              <p><strong>Price:</strong> ${{ part.price }}</p>
-              <p><strong>Weight:</strong> {{ part.weight }} kg</p>
+              <h5 class="card-title">{{ product.description }}</h5>
+              <p><strong>Price:</strong> ${{ product.price }}</p>
+              <p><strong>Weight:</strong> {{ product.weight }} kg</p>
+              <p><strong>Available:</strong> {{ product.available_quantity }}</p>
               {% if request.session.username %}
-                <!-- Add to Cart button for logged-in users -->
-                <a href="{% url 'add_to_cart' part.number %}" class="btn btn-primary">Add to Cart</a>
+                <a href="{% url 'add_to_cart' product.id %}" class="btn btn-primary">Add to Cart</a>
               {% else %}
-                <!-- Prompt login for non-authenticated users -->
                 <a href="{% url 'login' %}?next={% url 'part-detail' %}" class="btn btn-warning">Login to Add</a>
               {% endif %}
             </div>
@@ -51,8 +44,5 @@
       {% endfor %}
     </div>
   </div>
-
-  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

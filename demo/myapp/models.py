@@ -22,6 +22,17 @@ class Part(models.Model):
     def __str__(self):
         return self.description
 
+class Product(models.Model):
+    number = models.IntegerField(unique=True)
+    description = models.CharField(max_length=255)
+    price = models.DecimalField(max_digits=7, decimal_places=2)
+    weight = models.DecimalField(max_digits=5, decimal_places=2)
+    picture_url = models.URLField(max_length=255, verbose_name="Picture URL")
+    available_quantity = models.PositiveIntegerField(default=100)  # Default available quantity
+
+    def __str__(self):
+        return self.description
+
 
 class CustomUser(models.Model):
     email = models.EmailField(unique=True)  # Unique email for each user
@@ -34,7 +45,7 @@ class CustomUser(models.Model):
 
 class CartItem(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='cart_items')  # Link to CustomUser
-    part = models.ForeignKey(Part, to_field='number', on_delete=models.CASCADE)
+    part = models.ForeignKey(Product, to_field='number', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
 
     def __str__(self):
