@@ -1,69 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Checkout</title>
-</head>
-<body>
-  <div class="container">
-    <h2>Checkout</h2>
-    <form method="post" id="checkout-form">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Submit Payment</button>
-      <div id="loading-spinner" style="display: none;">
-        <div role="status">
-          <span>Processing...</span>
-        </div>
-        <p>Processing your payment, please wait...</p>
-      </div>
-    </form>
-
-    <div id="result"></div>
-
-    <script>
-      document.getElementById('checkout-form').onsubmit = async function(e) {
-        e.preventDefault();
-
-        // Display loading spinner
-        document.getElementById('loading-spinner').style.display = 'block';
-
-        // Clear previous results
-        const resultDiv = document.getElementById('result');
-        resultDiv.innerHTML = '';
-        resultDiv.style.display = 'none';
-
-        const formData = new FormData(this);
-
-        const response = await fetch("", {
-          method: "POST",
-          body: formData,
-        });
-
-        const result = await response.json();
-
-        // Hide loading spinner
-        document.getElementById('loading-spinner').style.display = 'none';
-
-        if (result.status === "success") {
-          const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
-          const formattedDateTime = new Date(result.transaction_time).toLocaleString('en-US', options);
-
-          resultDiv.innerHTML = `
-            <p>${result.message}</p>
-            <p><strong>Authorization Number:</strong> ${result.authorization_number}</p>
-            <p><strong>Transaction Date and Time:</strong> ${formattedDateTime}</p>
-          `;
-        } else {
-          resultDiv.innerHTML = `
-            <p>${result.message}</p>
-          `;
-        }
-
-        resultDiv.style.display = 'block';
-      }
-    </script>
-  </div>
-</body>
-</html>
+<form method="POST" novalidate>
+  {% csrf_token %}
+  {{ form.as_p }}
+  <p><strong>Total Price:</strong> ${{ total_price }}</p>
+  <p><strong>Shipping Charge:</strong> ${{ shipping_charge }}</p>
+  <p><strong>Handling Charge:</strong> ${{ handling_charge }}</p>
+  <p><strong>Total Cost:</strong> ${{ total_cost }}</p>
+  <button type="submit" class="btn btn-primary">Complete Purchase</button>
+</form>

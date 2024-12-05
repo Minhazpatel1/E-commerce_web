@@ -1,0 +1,20 @@
+<!-- purchase_success.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Success</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Purchase Successful</h1>
+        <p><strong>Base Price:</strong> ${{ request.GET.base_price }}</p>
+        <p><strong>Shipping Charge:</strong> ${{ request.GET.shipping_charge }}</p>
+        <p><strong>Handling Charge:</strong> ${{ request.GET.handling_charge }}</p>
+        <p><strong>Total Cost:</strong> ${{ request.GET.total_cost }}</p>
+        <a href="{% url 'part-detail' %}" class="btn btn-primary">Continue Shopping</a>
+    </div>
+</body>
+</html>

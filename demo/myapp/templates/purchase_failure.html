@@ -1,0 +1,21 @@
+<!-- purchase_failure.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Failed</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Purchase Failed</h1>
+        <div class="alert alert-danger" role="alert">
+            {{ error_message }}
+        </div>
+        <div>
+            <a href="{% url 'list_products' %}" class="btn btn-primary">Return to Products</a>
+        </div>
+    </div>
+</body>
+</html>
