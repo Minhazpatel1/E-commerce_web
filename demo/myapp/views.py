@@ -37,7 +37,7 @@ def part_detail(request):
 
 def add_to_cart(request, part_id):
     """
-    Add a part to the cart, decreasing available_quantity.
+    Add a part to the cart without altering the available_quantity yet.
     """
     if not request.session.get('user_id'):
         messages.error(request, "You need to log in first to add items to the cart.")
@@ -54,13 +54,12 @@ def add_to_cart(request, part_id):
     cart_item, created = CartItem.objects.get_or_create(part=part, user=user)
     if created:
         cart_item.save()
-        part.available_quantity -= 1  # Decrease available quantity
-        part.save()
         messages.success(request, f"{part.description} was added to the cart.")
     else:
         messages.info(request, f"{part.description} is already in your cart.")
 
     return redirect('cart_detail')
+
 
 def cart_detail(request):
     """
@@ -99,11 +98,29 @@ def decrease_quantity(request, item_id):
         messages.info(request, f"{cart_item.part.description} removed from the cart.")
     return redirect('cart_detail')
 
+def admin_dashboard(request):
+    return render(request, 'admin_dashboard.html')  # Create a template for the admin dashboard
+# def warehouse_dashboard(request):
+#     return render(request, 'warehouse_page.html')  # Create a template for the warehouse dashboard
+
+
+
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
 
+        # Hardcoded credentials for Admin and Warehouse Worker
+        if username == "admin" and password == "admin123":
+            # Redirect to Admin page
+            messages.success(request, "Welcome, Admin!")
+            return redirect('admin_dashboard')  # Define a URL or view for Admin Dashboard
+        elif username == "warehouse" and password == "warehouse123":
+            # Redirect to Warehouse Worker page
+            messages.success(request, "Welcome, Warehouse Worker!")
+            return redirect('warehouse_page')  # Define a URL or view for Warehouse Dashboard
+
+        # Standard user login process
         try:
             # Check if the username exists
             user = CustomUser.objects.get(username=username)
@@ -126,6 +143,7 @@ def login_view(request):
             return redirect('register')  # Redirect to the register page
 
     return render(request, 'login.html')
+
 
 
 
@@ -216,13 +234,14 @@ def checkout(request):
                 total_amount=total_cost,
                 shipping_handling=shipping_charge + handling_charge,
                 order_number=str(uuid.uuid4()),
+                status="Ordered",
             )
 
             # Create order items and update available quantities
             for item in cart_items:
                 product = item.part
                 if product.available_quantity >= item.quantity:
-                    product.available_quantity -= item.quantity
+                    product.available_quantity -= item.quantity  # Decrement here
                     product.save()
 
                     # Add to order items
@@ -259,316 +278,131 @@ def checkout(request):
     }
     return render(request, 'checkout.html', context)
 
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from .models import Order
 
+# Warehouse Page View
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from .models import Order
 
-
-
-
-# def purchase(request):
-#     if request.method == 'POST':
-#         # Generate a unique identifier, or use another method to ensure uniqueness
-#         unique_transaction_id = uuid.uuid4().hex  # Example using UUID
+# def warehouse_page(request):
+#     # Check if the user is a warehouse worker
+#     # if request.session.get('username') != 'warehouse':  # Replace with the warehouse worker's username
+#     #     messages.error(request, "Unauthorized access.")
+#     #     return redirect('login')
 #
-#         # Create a new Transaction entry directly
-#         Transaction.objects.create(
-#             id=unique_transaction_id,  # Using the generated UUID as the transaction ID
-#             cc=request.POST.get('creditCard'),
-#             exp=request.POST.get('creditCardExpirationDate'),
-#             name=request.POST.get('name'),  # Assuming these fields are provided in the form
-#             vendor="Default Vendor",  # Default or derived value
-#             trans="New Purchase",  # Example transaction description
-#             amount=request.POST.get('amount', 0.00),  # Assuming amount is provided, defaulting to 0.00 if not
-#             brand="Default Brand",  # Default or derived value
-#             authorization="Authorized",  # Default or specific logic to set this field
-#             timeStamp=int(time.time())  # Example to set current timestamp
-#         )
-#         messages.success(request, 'Transaction entry created successfully with ID: ' + unique_transaction_id)
-#         return redirect('purchase_success')  # Redirect to a success page
-#     else:
-#         messages.error(request, 'Invalid request method.')
-#         # return redirect('part-detail', product_id=part_id)
-#         return redirect('purchase_success')
+#     if request.method == 'POST':
+#         order_id = request.POST.get('order_id')
+#         new_status = request.POST.get('status')
+#         try:
+#             order = get_object_or_404(Order, id=order_id)
+#             if new_status in dict(Order.STATUS_CHOICES):  # Validate status
+#                 order.status = new_status
+#                 order.save()
+#                 return JsonResponse({'success': True, 'message': f"Order {order.order_number} status updated to {new_status}."})
+#             else:
+#                 return JsonResponse({'success': False, 'message': "Invalid status."})
+#         except Exception as e:
+#             return JsonResponse({'success': False, 'message': str(e)})
+#
+#     # Fetch all orders for display
+#     orders = Order.objects.all()
+#     return render(request, 'warehouse_page.html', {'orders': orders})
+
+from django.core.mail import send_mail
+from django.conf import settings
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from .models import Order
+
+def warehouse_page(request):
+    # Check if the user is a warehouse worker
+    # if request.session.get('username') != 'warehouse_worker':  # Replace with the warehouse worker's username
+    #     messages.error(request, "Unauthorized access.")
+    #     return redirect('login')
+
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        new_status = request.POST.get('status')
+        try:
+            order = get_object_or_404(Order, id=order_id)
+            if new_status in dict(Order.STATUS_CHOICES):  # Validate status
+                order.status = new_status
+                order.save()
+
+                # Send email if status is "Shipped"
+                if new_status == "Shipped":
+                    send_mail(
+                        subject="Order Shipped: {}".format(order.order_number),
+                        message=(
+                            f"Dear {order.customer_name},\n\n"
+                            f"Your order {order.order_number} has been shipped.\n\n"
+                            f"Thank you for shopping with us!\n\n"
+                            f"Best regards,\nYour Store Team"
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[order.customer_email],
+                        fail_silently=False,
+                    )
+
+                return JsonResponse({'success': True, 'message': f"Order {order.order_number} status updated to {new_status}."})
+            else:
+                return JsonResponse({'success': False, 'message': "Invalid status."})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+    # Fetch all orders for display
+    orders = Order.objects.all()
+    return render(request, 'warehouse_page.html', {'orders': orders})
+
+from django.shortcuts import render, get_object_or_404
+from .models import Order, OrderItem
+
+def warehouse_orders(request):
+    """
+    View to list all orders.
+    """
+    orders = Order.objects.all().order_by('-created_at')  # List orders, newest first
+    return render(request, 'warehouse_orders.html', {'orders': orders})
+
+from django.shortcuts import render, get_object_or_404
+from .models import Order, OrderItem
+
+def order_details(request, order_id):
+    """
+    View to display details of a specific order.
+    """
+    order = get_object_or_404(Order, id=order_id)
+    order_items = OrderItem.objects.filter(order=order)
+    return render(request, 'order_details.html', {'order': order, 'order_items': order_items})
+
+
+# Update Order Status
+# def update_order_status(request, order_id):
+#     # Check if user is a warehouse worker
+#     if request.session.get('username') != 'warehouse_worker':
+#         messages.error(request, "Unauthorized access.")
+#         return redirect('login')
+#
+#     order = get_object_or_404(Order, id=order_id)
+#
+#     if request.method == 'POST':
+#         new_status = request.POST.get('status')
+#         if new_status in dict(Order.STATUS_CHOICES):
+#             order.status = new_status
+#             order.save()
+#             messages.success(request, f"Order {order.order_number} status updated to {new_status}.")
+#         else:
+#             messages.error(request, "Invalid status.")
+#     return redirect('warehouse_page')
+
 
 def purchase_success(request):
     return render(request, 'purchase_success.html')
 
 def purchase_failure(request):
     return render(request, 'purchase_failure.html')
-
-# def checkout(request):
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Get logged-in user
-#             user_id = request.session.get('user_id')
-#             if not user_id:
-#                 messages.error(request, "You need to log in to proceed with checkout.")
-#                 return redirect('login')
-#
-#             user = get_object_or_404(CustomUser, id=user_id)
-#
-#             # Retrieve cart items for the user
-#             cart_items = CartItem.objects.filter(user=user)
-#             if not cart_items.exists():
-#                 messages.error(request, "Your cart is empty.")
-#                 return redirect('cart_detail')
-#
-#             # Calculate total amount and shipping
-#             total_weight = sum(item.part.weight * item.quantity for item in cart_items)
-#             shipping_handling = Decimal('10') + (Decimal(total_weight) * Decimal('0.5'))  # Ensure consistent use of Decimal
-#             total_amount = sum(item.total_price for item in cart_items) + shipping_handling
-#
-#             # Simulate payment authorization
-#             payment_data = {
-#                 "vendor": "VE001-99",
-#                 "trans": str(uuid.uuid4()),
-#                 "cc": form.cleaned_data['credit_card_number'],
-#                 "name": user.name,
-#                 "exp": form.cleaned_data['expiration_date'].strftime("%Y-%m"),
-#                 "amount": f"{total_amount:.2f}",
-#             }
-#             url = "http://blitz.cs.niu.edu/CreditCard/"
-#             headers = {"Content-Type": "application/json"}
-#             try:
-#                 response = requests.post(url, headers=headers, data=json.dumps(payment_data))
-#                 response.raise_for_status()
-#                 result = response.json()
-#
-#                 if 'authorization' in result:
-#                     # Create an order
-#                     order = Order.objects.create(
-#                         customer_name=user.name,
-#                         customer_email=user.email,
-#                         customer_address=form.cleaned_data['address'],
-#                         total_amount=total_amount,
-#                         shipping_handling=shipping_handling,
-#                         order_number=str(uuid.uuid4()),  # Generate unique order number
-#                     )
-#
-#                     # Create order items and update product quantities
-#                     for item in cart_items:
-#                         product = item.part
-#                         OrderItem.objects.create(
-#                             order=order,
-#                             product=product,
-#                             quantity=item.quantity,
-#                             total_price=item.total_price
-#                         )
-#                         # Reduce available quantity
-#                         product.available_quantity -= item.quantity
-#                         if product.available_quantity < 0:
-#                             messages.error(request, f"Insufficient stock for {product.description}.")
-#                             return redirect('cart_detail')
-#                         product.save()
-#
-#                     # Clear the cart for this user
-#                     cart_items.delete()
-#
-#                     # Display success message
-#                     messages.success(request, f"Order {order.order_number} placed successfully!")
-#
-#                     # Optional: Send email confirmation
-#                     # send_order_confirmation_email(order)
-#
-#                     return redirect('part_detail')
-#                 else:
-#                     messages.error(request, "Payment authorization failed. Please try again.")
-#             except requests.RequestException:
-#                 messages.error(request, "Failed to connect to the payment gateway. Please try again.")
-#         else:
-#             messages.error(request, "Invalid form data. Please correct the errors.")
-#     else:
-#         form = CheckoutForm()
-#
-#     return render(request, 'checkout.html', {'form': form})
-
-
-# def checkout(request):
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Collect form data
-#             name = "minhaz patel"
-#             # form.cleaned_data['name']
-#             email = "ptlminhaz123@gmail.com"
-#             #form.cleaned_data['email']
-#             address = "home center"
-#             # form.cleaned_data['address']
-#             credit_card_number = "6011123443211234"
-#             # form.cleaned_data['credit_card_number']
-#             cvv = "123"
-#             # form.cleaned_data['cvv']
-#             expiration_date = "12/12/2025"
-#             # form.cleaned_data['expiration_date']
-#
-#             # Retrieve cart items from session
-#             cart_items = request.session.get('cart', [])
-#             if not cart_items:
-#                 messages.error(request, "Your cart is empty.")
-#                 return redirect('cart_detail')
-#
-#             # Calculate total amount and shipping
-#             total_weight = sum(item['weight'] * item['quantity'] for item in cart_items)
-#             shipping_handling = 10 + (total_weight * 0.5)  # Example calculation
-#             total_amount = sum(item['price'] * item['quantity'] for item in cart_items) + shipping_handling
-#
-#             # Simulate payment authorization
-#             payment_data = {
-#                 "vendor": "VE001-99",
-#                 "trans": str(uuid.uuid4()),
-#                 "cc": credit_card_number,
-#                 "name": name,
-#                 "exp": expiration_date.strftime("%Y-%m"),
-#                 "amount": f"{total_amount:.2f}",
-#             }
-#             url = "http://blitz.cs.niu.edu/CreditCard/"
-#             headers = {"Content-Type": "application/json"}
-#             try:
-#                 response = requests.post(url, headers=headers, data=json.dumps(payment_data))
-#                 response.raise_for_status()  # Ensure we handle non-200 statuses
-#                 result = response.json()
-#
-#                 if 'authorization' in result:
-#                     # Create an order
-#                     order = Order.objects.create(
-#                         customer_name=name,
-#                         customer_email=email,
-#                         customer_address=address,
-#                         total_amount=total_amount,
-#                         shipping_handling=shipping_handling,
-#                         order_number=str(uuid.uuid4()),  # Generate unique order number
-#                     )
-#
-#                     # Create order items and update product quantities
-#                     for item in cart_items:
-#                         product = get_object_or_404(Product, number=item['id'])
-#                         OrderItem.objects.create(
-#                             order=order,
-#                             product=product,
-#                             quantity=item['quantity'],
-#                             total_price=item['price'] * item['quantity']
-#                         )
-#                         # Update product quantity
-#                         product.quantity -= item['quantity']
-#                         if product.quantity < 0:
-#                             messages.error(request, f"Insufficient stock for {product.description}.")
-#                             return redirect('cart_detail')
-#                         product.save()
-#
-#                     # Clear the cart
-#                     request.session['cart'] = []
-#
-#                     # Display success message
-#                     messages.success(request, f"Order {order.order_number} placed successfully!")
-#
-#                     # Optional: Send email confirmation
-#                     # send_order_confirmation_email(order)
-#
-#                     return redirect('part_detail')
-#                 else:
-#                     messages.error(request, "Payment authorization failed. Please try again.")
-#             except requests.RequestException as e:
-#                 messages.error(request, "Failed to connect to the payment gateway. Please try again.")
-#         else:
-#             messages.error(request, "Invalid form data. Please correct the errors.")
-#     else:
-#         form = CheckoutForm()
-#
-#     return render(request, 'checkout.html', {'form': form})
-
-
-
-# def checkout(request):
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Get cart items for the user
-#             user_id = request.session.get('user_id')
-#             user = get_object_or_404(CustomUser, id=user_id)
-#             cart_items = CartItem.objects.filter(user=user)
-#
-#             # Compute total amount and shipping/handling charges
-#             total_weight = sum(item.part.weight * item.quantity for item in cart_items)
-#             total_amount = sum(item.total_price for item in cart_items)
-#             shipping_handling = 10 + (0.05 * total_weight)  # Example: $10 base + $0.05 per kg
-#             final_amount = total_amount + shipping_handling
-#
-#             # Simulate credit card processing
-#             name = f"{user.name}"
-#             credit_card_number = form.cleaned_data['credit_card_number']
-#             expiration_date = form.cleaned_data['expiration_date']
-#
-#             # Generate unique vendor and transaction IDs
-#             vendor_id = 'VE001-99'
-#             transaction_id = str(uuid.uuid4())
-#
-#             # Data payload for the authorization request
-#             data = {
-#                 'vendor': vendor_id,
-#                 'trans': transaction_id,
-#                 'cc': credit_card_number,
-#                 'name': name,
-#                 'exp': expiration_date,
-#                 'amount': final_amount,
-#             }
-#
-#             url = 'http://blitz.cs.niu.edu/CreditCard/'
-#             headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-#             response = requests.post(url, headers=headers, data=json.dumps(data))
-#
-#             if response.status_code == 200:
-#                 result = response.json()
-#                 if result.get('authorization'):
-#                     # Create the Order
-#                     order = Order.objects.create(
-#                         customer=user,
-#                         total_amount=total_amount,
-#                         shipping_handling=shipping_handling,
-#                         final_amount=final_amount,
-#                         status='Authorized'
-#                     )
-#
-#                     # Add items to the order and update the Product quantities
-#                     for item in cart_items:
-#                         # Deduct the quantity from the product
-#                         product = Product.objects.get(number=item.part.number)
-#                         if product.available_quantity >= item.quantity:
-#                             product.available_quantity -= item.quantity
-#                             product.save()
-#
-#                             # Add the item to the order
-#                             OrderItem.objects.create(
-#                                 order=order,
-#                                 product=product,
-#                                 quantity=item.quantity,
-#                                 price=product.price
-#                             )
-#                         else:
-#                             messages.error(request, f"Not enough stock for {product.description}.")
-#                             return redirect('cart_detail')
-#
-#                     # Clear the cart
-#                     cart_items.delete()
-#
-#                     # Send confirmation email
-#                     send_mail(
-#                         'Order Confirmation',
-#                         f"Your order {order.order_number} has been placed successfully.\n"
-#                         f"Total Amount: ${final_amount:.2f}\n"
-#                         f"Shipping and Handling: ${shipping_handling:.2f}",
-#                         settings.DEFAULT_FROM_EMAIL,
-#                         [user.email],
-#                         fail_silently=False,
-#                     )
-#
-#                     messages.success(request, "Order placed successfully!")
-#                     return redirect('part-detail')
-#                 else:
-#                     messages.error(request, "Payment authorization failed.")
-#             else:
-#                 messages.error(request, "Failed to connect to the payment gateway.")
-#
-#     else:
-#         form = CheckoutForm()
-#
-#     return render(request, 'checkout.html', {'form': form})

@@ -249,5 +249,14 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Email settings for Gmail
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'ibrahimalazhar264@gmail.com'  # Replace with your Gmail address
+EMAIL_HOST_PASSWORD = 'yugg qsam qewb wyng'  # Replace with your Gmail password
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+
 
 

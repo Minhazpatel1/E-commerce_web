@@ -13,5 +13,11 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.login_view, name='login'),
     path('logout/', views.custom_logout, name='logout'),  # Custom logout
-    path('purchase_success/', views.purchase_success, name='purchase_success')
+    path('purchase_success/', views.purchase_success, name='purchase_success'),
+    path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    # path('warehouse-dashboard/', views.warehouse_dashboard, name='warehouse_dashboard'),
+    path('warehouse/', views.warehouse_page, name='warehouse_page'),
+    path('warehouse/', views.warehouse_orders, name='warehouse_orders'),
+    path('warehouse/order/<int:order_id>/', views.order_details, name='order_details'),
+    # path('update-order-status/<int:order_id>/', views.update_order_status, name='update_order_status'),
 ]
