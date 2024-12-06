@@ -19,5 +19,14 @@ urlpatterns = [
     path('warehouse/', views.warehouse_page, name='warehouse_page'),
     path('warehouse/', views.warehouse_orders, name='warehouse_orders'),
     path('warehouse/order/<int:order_id>/', views.order_details, name='order_details'),
+    path('manage-products/', views.manage_products, name='manage_products'),
+    path('manage-charges/', views.manage_charge, name='manage_charges'),
+    path('orders/', views.admin_orders, name='admin_orders'),
+    path('orders/<int:order_id>/', views.admin_order_details, name='admin_order_details'),
+
     # path('update-order-status/<int:order_id>/', views.update_order_status, name='update_order_status'),
 ]
+
+
+
+

@@ -56,3 +56,15 @@ class CheckoutForm(forms.Form):
         if expiration_date < date.today():
             raise forms.ValidationError("Expiration date cannot be in the past.")
         return expiration_date
+
+from django import forms
+from .models import OrderItem
+
+class OrderItemUpdateForm(forms.ModelForm):
+    class Meta:
+        model = OrderItem
+        fields = ['shipping_label', 'invoice_label']
+        widgets = {
+            'shipping_label': forms.TextInput(attrs={'class': 'form-control'}),
+            'invoice_label': forms.TextInput(attrs={'class': 'form-control'}),
+        }

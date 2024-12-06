@@ -1,9 +1,72 @@
-<form method="POST" novalidate>
-  {% csrf_token %}
-  {{ form.as_p }}
-  <p><strong>Total Price:</strong> ${{ total_price }}</p>
-  <p><strong>Shipping Charge:</strong> ${{ shipping_charge }}</p>
-  <p><strong>Handling Charge:</strong> ${{ handling_charge }}</p>
-  <p><strong>Total Cost:</strong> ${{ total_cost }}</p>
-  <button type="submit" class="btn btn-primary">Complete Purchase</button>
-</form>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin-top: 50px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+        .summary-box {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>Checkout</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" novalidate id="checkoutForm">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                {{ form.as_p }}
+                            </div>
+                            <div class="summary-box">
+                                <h4 class="text-center">Order Summary</h4>
+                                <p><strong>Total Price:</strong> $<span id="totalPrice">{{ total_price }}</span></p>
+                                <p><strong>Shipping Charge:</strong> $<span id="shippingCharge">{{ shipping_charge }}</span></p>
+                                <p><strong>Handling Charge:</strong> $<span id="handlingCharge">{{ handling_charge }}</span></p>
+                                <p class="font-weight-bold"><strong>Total Cost:</strong> $<span id="totalCost">{{ total_cost }}</span></p>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block mt-4">Complete Purchase</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("checkoutForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let confirmation = confirm("Are you sure you want to complete the purchase?");
+            if (confirmation) {
+                this.submit();
+            }
+        });
+    </script>
+</body>
+</html>
