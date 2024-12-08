@@ -3,5 +3,3 @@ from .models import TodoItem
 
 # Register your models here.
 admin.site.register(TodoItem)
-
-# number, description, price, weight, pictureURL

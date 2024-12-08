@@ -26,14 +26,18 @@ def sync_products_from_legacy():
             }
         )
 
-
 def part_detail(request):
     """
-    Displays available products with quantities.
+    Displays available products with search functionality.
     """
-    sync_products_from_legacy()  # Sync legacy parts to the Product table
-    products = Product.objects.all()
-    return render(request, 'part_detail.html', {'products': products})
+    query = request.GET.get('q', '')  # Get the search query from the request
+    if query:
+        products = Product.objects.filter(description__icontains=query)  # Filter products by description
+    else:
+        products = Product.objects.all()  # Display all products if no query
+
+    return render(request, 'part_detail.html', {'products': products, 'query': query})
+
 
 def add_to_cart(request, part_id):
     """
@@ -100,23 +104,16 @@ def decrease_quantity(request, item_id):
 
 def admin_dashboard(request):
     return render(request, 'admin_dashboard.html')  # Create a template for the admin dashboard
-# def warehouse_dashboard(request):
-#     return render(request, 'warehouse_page.html')  # Create a template for the warehouse dashboard
-
-
 
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
 
-        # Hardcoded credentials for Admin and Warehouse Worker
         if username == "admin" and password == "admin123":
-            # Redirect to Admin page
             messages.success(request, "Welcome, Admin!")
             return redirect('admin_dashboard')  # Define a URL or view for Admin Dashboard
         elif username == "warehouse" and password == "warehouse123":
-            # Redirect to Warehouse Worker page
             messages.success(request, "Welcome, Warehouse Worker!")
             return redirect('warehouse_page')  # Define a URL or view for Warehouse Dashboard
 
@@ -143,8 +140,6 @@ def login_view(request):
             return redirect('register')  # Redirect to the register page
 
     return render(request, 'login.html')
-
-
 
 # Register View
 def register(request):
@@ -176,7 +171,6 @@ def register(request):
 
     return render(request, 'register.html')
 
-
 # Logout View
 def custom_logout(request):
     request.session.flush()
@@ -197,393 +191,15 @@ from django.contrib import messages
 from decimal import Decimal
 from .models import Order
 
+def order_success(request):
+    return render(request, 'order_success.html')
+
+
 from decimal import Decimal
 from django.db.models import Avg
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from .models import Order
-
-# def manage_charges(request):
-
-
-# def manage_charges(request):
-#     # Calculate average charges across all orders
-#     shipping_charge_avg = Order.objects.aggregate(Avg('shipping_charge'))['shipping_charge__avg'] or Decimal('0.00')
-#     handling_charge_avg = Order.objects.aggregate(Avg('handling_charge'))['handling_charge__avg'] or Decimal('0.00')
-#
-#     # Default charges if no orders exist or average isn't applicable
-#     default_shipping_charge = Decimal('10.00')  # Define a default shipping charge
-#     default_handling_charge = Decimal('5.00')   # Define a default handling charge
-#
-#     current_shipping_charge = shipping_charge_avg if shipping_charge_avg > 0 else default_shipping_charge
-#     current_handling_charge = handling_charge_avg if handling_charge_avg > 0 else default_handling_charge
-#
-#     if request.method == 'POST':
-#         # Get new values from the form
-#         new_shipping_charge = Decimal(request.POST.get('shipping_charge', current_shipping_charge))
-#         new_handling_charge = Decimal(request.POST.get('handling_charge', current_handling_charge))
-#
-#         # Update all orders with the new charges
-#         Order.objects.update(shipping_charge=new_shipping_charge, handling_charge=new_handling_charge)
-#
-#         messages.success(request, "Charges updated successfully!")
-#         return redirect('manage_charges')
-#
-#     return render(request, 'manage_charges.html', {
-#         'current_shipping_charge': current_shipping_charge,
-#         'current_handling_charge': current_handling_charge,
-#     })
-
-
-#
-# def manage_charges(request):
-#     if request.method == 'POST':
-#         try:
-#             # Get new charges from the form
-#             shipping_charge = Decimal(request.POST.get('shipping_charge'))
-#             handling_charge = Decimal(request.POST.get('handling_charge'))
-#
-#             # Update all existing orders
-#             Order.objects.all().update(
-#                 shipping_charge=shipping_charge,
-#                 handling_charge=handling_charge,
-#             )
-#
-#             messages.success(request, "Shipping and handling charges updated successfully!")
-#         except Exception as e:
-#             messages.error(request, f"Error updating charges: {str(e)}")
-#
-#     # Pass the current charges for display
-#     latest_order = Order.objects.order_by('-created_at').first()
-#     current_shipping_charge = latest_order.shipping_charge if latest_order else Decimal('0.00')
-#     current_handling_charge = latest_order.handling_charge if latest_order else Decimal('0.00')
-#
-#     return render(request, 'manage_charges.html', {
-#         'current_shipping_charge': current_shipping_charge,
-#         'current_handling_charge': current_handling_charge,
-#     })
-
-# def checkout(request):
-#     # Check if the user is logged in
-#     user_id = request.session.get('user_id')
-#     if not user_id:
-#         messages.error(request, "You need to log in to proceed with checkout.")
-#         return redirect('login')
-#
-#     user = get_object_or_404(CustomUser, id=user_id)
-#
-#     # Fetch cart items for the logged-in user
-#     cart_items = CartItem.objects.filter(user=user)
-#     if not cart_items.exists():
-#         messages.error(request, "Your cart is empty.")
-#         return redirect('cart_detail')
-#
-#     # Calculate total costs using the model methods
-#     total_price = sum(item.total_price for item in cart_items)
-#
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Process valid form data
-#             name = form.cleaned_data['name']
-#             email = form.cleaned_data['email']
-#             address = form.cleaned_data['address']
-#
-#             # Create an order
-#             order = Order.objects.create(
-#                 customer_name=name,
-#                 customer_email=email,
-#                 customer_address=address,
-#                 total_amount=total_price,
-#                 shipping_charge=sum(item.calculate_shipping_charge() for item in cart_items),
-#                 handling_charge=sum(item.calculate_handling_charge() for item in cart_items),
-#                 order_number=str(uuid.uuid4()),
-#                 status="Ordered",
-#             )
-#
-#             # Create order items and update available quantities
-#             for item in cart_items:
-#                 product = item.part
-#                 if product.available_quantity >= item.quantity:
-#                     product.available_quantity -= item.quantity  # Decrement here
-#                     product.save()
-#
-#                     # Add to order items
-#                     OrderItem.objects.create(
-#                         order=order,
-#                         product=product,
-#                         quantity=item.quantity,
-#                         total_price=item.total_price,
-#                     )
-#                 else:
-#                     messages.error(request, f"Insufficient stock for {product.description}.")
-#                     return redirect('cart_detail')
-#
-#             # Clear the user's cart
-#             cart_items.delete()
-#
-#             # Confirmation message
-#             messages.success(request, f"Order {order.order_number} placed successfully!")
-#             return redirect('part-detail')
-#         else:
-#             # Form errors
-#             messages.error(request, "There was an error with your form. Please check your inputs.")
-#     else:
-#         # Display form with cart details
-#         form = CheckoutForm()
-#
-#     context = {
-#         'form': form,
-#         'cart_items': cart_items,
-#         'total_price': total_price,
-#     }
-#     return render(request, 'checkout.html', context)
-
-# def checkout(request):
-#     # Check if the user is logged in
-#     user_id = request.session.get('user_id')
-#     if not user_id:
-#         messages.error(request, "You need to log in to proceed with checkout.")
-#         return redirect('login')
-#
-#     user = get_object_or_404(CustomUser, id=user_id)
-#
-#     # Fetch cart items for the logged-in user
-#     cart_items = CartItem.objects.filter(user=user)
-#     if not cart_items.exists():
-#         messages.error(request, "Your cart is empty.")
-#         return redirect('cart_detail')
-#
-#     # Calculate total costs using the model methods
-#     total_price = sum(item.total_price for item in cart_items)
-#     shipping_charge = sum(item.shipping_charge for item in cart_items)  # Sum up shipping charges
-#     handling_charge = sum(item.handling_charge for item in cart_items)  # Sum up handling charges
-#     total_cost = total_price + shipping_charge + handling_charge
-#
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Process valid form data
-#             name = form.cleaned_data['name']
-#             email = form.cleaned_data['email']
-#             address = form.cleaned_data['address']
-#
-#             # Create an order
-#             order = Order.objects.create(
-#                 customer_name=name,
-#                 customer_email=email,
-#                 customer_address=address,
-#                 total_amount=total_price,
-#                 shipping_charge=shipping_charge,
-#                 handling_charge=handling_charge,
-#                 order_number=str(uuid.uuid4()),
-#                 status="Ordered",
-#             )
-#
-#             # Create order items and update available quantities
-#             for item in cart_items:
-#                 product = item.part
-#                 if product.available_quantity >= item.quantity:
-#                     product.available_quantity -= item.quantity  # Decrement here
-#                     product.save()
-#
-#                     # Add to order items
-#                     OrderItem.objects.create(
-#                         order=order,
-#                         product=product,
-#                         quantity=item.quantity,
-#                         total_price=item.total_price,
-#                     )
-#                 else:
-#                     messages.error(request, f"Insufficient stock for {product.description}.")
-#                     return redirect('cart_detail')
-#
-#             # Clear the user's cart
-#             cart_items.delete()
-#
-#             # Confirmation message
-#             messages.success(request, f"Order {order.order_number} placed successfully!")
-#             return redirect('part-detail')
-#         else:
-#             # Form errors
-#             messages.error(request, "There was an error with your form. Please check your inputs.")
-#     else:
-#         # Display form with cart details
-#         form = CheckoutForm()
-#
-#     context = {
-#         'form': form,
-#         'cart_items': cart_items,
-#         'total_price': total_price,
-#         'shipping_charge': shipping_charge,
-#         'handling_charge': handling_charge,
-#         'total_cost': total_cost,
-#     }
-#     return render(request, 'checkout.html', context)
-
-# def checkout(request):
-#     # Check if the user is logged in
-#     user_id = request.session.get('user_id')
-#     if not user_id:
-#         messages.error(request, "You need to log in to proceed with checkout.")
-#         return redirect('login')
-#
-#     user = get_object_or_404(CustomUser, id=user_id)
-#
-#     # Fetch cart items for the logged-in user
-#     cart_items = CartItem.objects.filter(user=user)
-#     if not cart_items.exists():
-#         messages.error(request, "Your cart is empty.")
-#         return redirect('cart_detail')
-#
-#     # Calculate charges using CartItem model methods
-#     total_price = sum(item.total_price for item in cart_items)  # Total price of items
-#     shipping_charge = sum(item.calculate_shipping_charge() for item in cart_items)  # Dynamic shipping charge
-#     handling_charge = sum(item.calculate_handling_charge() for item in cart_items)  # Dynamic handling charge
-#     total_cost = total_price + shipping_charge + handling_charge  # Total cost
-#
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Process valid form data
-#             name = form.cleaned_data['name']
-#             email = form.cleaned_data['email']
-#             address = form.cleaned_data['address']
-#
-#             # Create an order
-#             order = Order.objects.create(
-#                 customer_name=name,
-#                 customer_email=email,
-#                 customer_address=address,
-#                 total_amount=total_cost,
-#                 order_number=str(uuid.uuid4()),
-#                 status="Ordered",
-#             )
-#
-#             # Create order items and update available quantities
-#             for item in cart_items:
-#                 product = item.part
-#                 if product.available_quantity >= item.quantity:
-#                     product.available_quantity -= item.quantity  # Decrement here
-#                     product.save()
-#
-#                     # Add to order items
-#                     OrderItem.objects.create(
-#                         order=order,
-#                         product=product,
-#                         quantity=item.quantity,
-#                         total_price=item.total_price,
-#                     )
-#                 else:
-#                     messages.error(request, f"Insufficient stock for {product.description}.")
-#                     return redirect('cart_detail')
-#
-#             # Clear the user's cart
-#             cart_items.delete()
-#
-#             # Confirmation message
-#             messages.success(request, f"Order {order.order_number} placed successfully!")
-#             return redirect('part-detail')
-#         else:
-#             # Form errors
-#             messages.error(request, "There was an error with your form. Please check your inputs.")
-#     else:
-#         # Display form with cart details
-#         form = CheckoutForm()
-#
-#     context = {
-#         'form': form,
-#         'cart_items': cart_items,
-#         'total_price': total_price,
-#         'shipping_charge': shipping_charge,
-#         'handling_charge': handling_charge,
-#         'total_cost': total_cost,
-#     }
-#     return render(request, 'checkout.html', context)
-
-# def checkout(request):
-#     # Check if the user is logged in
-#     user_id = request.session.get('user_id')
-#     if not user_id:
-#         messages.error(request, "You need to log in to proceed with checkout.")
-#         return redirect('login')
-#
-#     user = get_object_or_404(CustomUser, id=user_id)
-#
-#     # Fetch cart items for the logged-in user
-#     cart_items = CartItem.objects.filter(user=user)
-#     if not cart_items.exists():
-#         messages.error(request, "Your cart is empty.")
-#         return redirect('cart_detail')
-#
-#     # Calculate charges using CartItem model methods
-#     total_price = sum(item.total_price for item in cart_items)  # Total price of items
-#     shipping_charge = sum(item.calculate_shipping_charge() for item in cart_items)  # Dynamic shipping charge
-#     handling_charge = sum(item.calculate_handling_charge() for item in cart_items)  # Dynamic handling charge
-#     total_cost = total_price + shipping_charge + handling_charge  # Total cost
-#
-#     # Concatenate shipping and handling charges for the order
-#     shipping_handling_charge = f"Shipping: ${shipping_charge:.2f}, Handling: ${handling_charge:.2f}"
-#
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Process valid form data
-#             name = form.cleaned_data['name']
-#             email = form.cleaned_data['email']
-#             address = form.cleaned_data['address']
-#
-#             # Create an order
-#             order = Order.objects.create(
-#                 customer_name=name,
-#                 customer_email=email,
-#                 customer_address=address,
-#                 total_amount=total_cost,
-#                 shipping_handling_charge=shipping_handling_charge,
-#                 order_number=str(uuid.uuid4()),
-#                 status="Ordered",
-#             )
-#
-#             # Create order items and update available quantities
-#             for item in cart_items:
-#                 product = item.part
-#                 if product.available_quantity >= item.quantity:
-#                     product.available_quantity -= item.quantity  # Decrement here
-#                     product.save()
-#
-#                     # Add to order items
-#                     OrderItem.objects.create(
-#                         order=order,
-#                         product=product,
-#                         quantity=item.quantity,
-#                         total_price=item.total_price,
-#                     )
-#                 else:
-#                     messages.error(request, f"Insufficient stock for {product.description}.")
-#                     return redirect('cart_detail')
-#
-#             # Clear the user's cart
-#             cart_items.delete()
-#
-#             # Confirmation message
-#             messages.success(request, f"Order {order.order_number} placed successfully!")
-#             return redirect('part-detail')
-#         else:
-#             # Form errors
-#             messages.error(request, "There was an error with your form. Please check your inputs.")
-#     else:
-#         # Display form with cart details
-#         form = CheckoutForm()
-#
-#     context = {
-#         'form': form,
-#         'cart_items': cart_items,
-#         'total_price': total_price,
-#         'shipping_charge': shipping_charge,
-#         'handling_charge': handling_charge,
-#         'total_cost': total_cost,
-#     }
-#     return render(request, 'checkout.html', context)
 
 def checkout(request):
     # Check if the user is logged in
@@ -600,10 +216,21 @@ def checkout(request):
         messages.error(request, "Your cart is empty.")
         return redirect('cart_detail')
 
+    # Set default values for shipping and handling charges
+    default_shipping_charge = Decimal("10.00")  # Default shipping charge
+    default_handling_charge = Decimal("5.00")  # Default handling charge
+
     # Calculate charges using CartItem model methods
     total_price = sum(item.total_price for item in cart_items)  # Total price of items
     shipping_charge = sum(item.calculate_shipping_charge() for item in cart_items)  # Dynamic shipping charge
     handling_charge = sum(item.calculate_handling_charge() for item in cart_items)  # Dynamic handling charge
+
+    # If charges are zero, set them to default values
+    if shipping_charge == 0:
+        shipping_charge = default_shipping_charge
+    if handling_charge == 0:
+        handling_charge = default_handling_charge
+
     shipping_handling = shipping_charge + handling_charge  # Combine shipping and handling
     total_cost = total_price + shipping_handling  # Total cost
 
@@ -647,9 +274,28 @@ def checkout(request):
             # Clear the user's cart
             cart_items.delete()
 
-            # Confirmation message
-            messages.success(request, f"Order {order.order_number} placed successfully!")
-            return redirect('part-detail')
+            subject = f"Order Confirmation - {order.order_number}"
+            message = (
+                f"Dear {name},\n\n"
+                f"Thank you for your order!\n\n"
+                f"Order Details:\n"
+                f"Order Number: {order.order_number}\n"
+                f"Total Amount: ${total_cost:.2f}\n"
+                f"Shipping Address: {address}\n\n"
+                f"We will notify you once your order is shipped.\n\n"
+                f"Thank you for shopping with us!"
+            )
+            from_email = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [email]
+
+            try:
+                send_mail(subject, message, from_email, recipient_list)
+                messages.success(request, f"Order {order.order_number} placed successfully! Confirmation email sent.")
+            except Exception as e:
+                messages.error(request, f"Order placed but email could not be sent: {e}")
+
+            # return redirect('part-detail')
+            return redirect('order_success')
         else:
             # Form errors
             messages.error(request, "There was an error with your form. Please check your inputs.")
@@ -667,9 +313,6 @@ def checkout(request):
     }
     return render(request, 'checkout.html', context)
 
-from django.shortcuts import render
-from .models import Order
-from django.db.models import Q
 from datetime import datetime
 
 def admin_orders(request):
@@ -708,96 +351,6 @@ def admin_orders(request):
 
     return render(request, 'admin_orders.html', context)
 
-
-# def checkout(request):
-#     # Check if the user is logged in
-#     user_id = request.session.get('user_id')
-#     if not user_id:
-#         messages.error(request, "You need to log in to proceed with checkout.")
-#         return redirect('login')
-#
-#     user = get_object_or_404(CustomUser, id=user_id)
-#
-#     # Fetch cart items for the logged-in user
-#     cart_items = CartItem.objects.filter(user=user)
-#     if not cart_items.exists():
-#         messages.error(request, "Your cart is empty.")
-#         return redirect('cart_detail')
-#
-#     # Calculate charges using CartItem model methods
-#     total_price = sum(item.total_price for item in cart_items)  # Total price of items
-#     shipping_charge = sum(item.calculate_shipping_charge() for item in cart_items)  # Dynamic shipping charge
-#     handling_charge = sum(item.calculate_handling_charge() for item in cart_items)  # Dynamic handling charge
-#     total_cost = total_price + shipping_charge + handling_charge  # Total cost
-#
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Process valid form data
-#             name = form.cleaned_data['name']
-#             email = form.cleaned_data['email']
-#             address = form.cleaned_data['address']
-#
-#             # Create an order
-#             order = Order.objects.create(
-#                 customer_name=name,
-#                 customer_email=email,
-#                 customer_address=address,
-#                 total_amount=total_cost,
-#                 shipping_charge=shipping_charge,
-#                 handling_charge=handling_charge,
-#                 order_number=str(uuid.uuid4()),
-#                 status="Ordered",
-#             )
-#
-#             # Create order items and update available quantities
-#             for item in cart_items:
-#                 product = item.part
-#                 if product.available_quantity >= item.quantity:
-#                     product.available_quantity -= item.quantity  # Decrement here
-#                     product.save()
-#
-#                     # Add to order items
-#                     OrderItem.objects.create(
-#                         order=order,
-#                         product=product,
-#                         quantity=item.quantity,
-#                         total_price=item.total_price,
-#                     )
-#                 else:
-#                     messages.error(request, f"Insufficient stock for {product.description}.")
-#                     return redirect('cart_detail')
-#
-#             # Clear the user's cart
-#             cart_items.delete()
-#
-#             # Confirmation message
-#             messages.success(request, f"Order {order.order_number} placed successfully!")
-#             return redirect('part-detail')
-#         else:
-#             # Form errors
-#             messages.error(request, "There was an error with your form. Please check your inputs.")
-#     else:
-#         # Display form with cart details
-#         form = CheckoutForm()
-#
-#     context = {
-#         'form': form,
-#         'cart_items': cart_items,
-#         'total_price': total_price,
-#         'shipping_charge': shipping_charge,
-#         'handling_charge': handling_charge,
-#         'total_cost': total_cost,
-#     }
-#     return render(request, 'checkout.html', context)
-
-
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.views.decorators.http import require_POST
-from .models import Product
-from decimal import Decimal
-
 def admin_order_details(request, order_id):
     """
     View to display details of a specific order including its items.
@@ -812,11 +365,8 @@ def admin_order_details(request, order_id):
 
     return render(request, 'admin_order_details.html', context)
 
-
-from decimal import Decimal
-from django.shortcuts import render, redirect
-from django.contrib import messages
 from .models import CartItem
+from decimal import Decimal
 
 def manage_charge(request):
     """
@@ -853,179 +403,11 @@ def manage_charge(request):
     }
     return render(request, 'manage_charges.html', context)
 
-
-# def manage_charge(request):
-#     """
-#     View to allow the admin to manage shipping and handling charges.
-#     """
-#     # if not request.session.get('is_admin'):  # Check if the user is an admin
-#     #     messages.error(request, "You do not have permission to access this page.")
-#     #     return redirect('login')
-#
-#     # Default values for charges
-#     current_shipping_charge = Decimal("10.00")  # Default shipping charge
-#     current_handling_charge = Decimal("5.00")  # Default handling charge
-#
-#     if request.method == "POST":
-#         # Get values from the form
-#         shipping_charge = request.POST.get('shipping_charge')
-#         handling_charge = request.POST.get('handling_charge')
-#
-#         try:
-#             # Update charges globally for all products
-#             Product.objects.update(
-#                 shipping_charge=Decimal(shipping_charge),
-#                 handling_charge=Decimal(handling_charge),
-#             )
-#             messages.success(request, "Shipping and handling charges updated successfully.")
-#         except Exception as e:
-#             messages.error(request, f"An error occurred: {e}")
-#
-#     # Get the charges from any product (assuming charges are the same for all products)
-#     product = Product.objects.first()
-#     if product:
-#         current_shipping_charge = product.shipping_charge
-#         current_handling_charge = product.handling_charge
-#
-#     context = {
-#         'current_shipping_charge': current_shipping_charge,
-#         'current_handling_charge': current_handling_charge,
-#     }
-#     return render(request, 'manage_charges.html', context)
-
-
-# def checkout(request):
-#     handling_fee = Decimal("5.00")  # Fixed handling charge
-#     per_unit_weight_shipping_cost = Decimal("10.00")  # Per unit weight shipping cost
-#
-#     # Check if the user is logged in
-#     user_id = request.session.get('user_id')
-#     if not user_id:
-#         messages.error(request, "You need to log in to proceed with checkout.")
-#         return redirect('login')
-#
-#     user = get_object_or_404(CustomUser, id=user_id)
-#
-#     # Fetch cart items for the logged-in user
-#     cart_items = CartItem.objects.filter(user=user)
-#     if not cart_items.exists():
-#         messages.error(request, "Your cart is empty.")
-#         return redirect('cart_detail')
-#
-#     # Calculate total costs
-#     total_weight = sum(item.part.weight * item.quantity for item in cart_items)
-#     total_price = sum(item.total_price for item in cart_items)
-#     shipping_charge = total_weight * per_unit_weight_shipping_cost
-#     handling_charge = handling_fee
-#     total_cost = total_price + shipping_charge + handling_charge
-#
-#     if request.method == 'POST':
-#         form = CheckoutForm(request.POST)
-#         if form.is_valid():
-#             # Process valid form data
-#             name = form.cleaned_data['name']
-#             email = form.cleaned_data['email']
-#             address = form.cleaned_data['address']
-#
-#             # Create an order
-#             order = Order.objects.create(
-#                 customer_name=name,
-#                 customer_email=email,
-#                 customer_address=address,
-#                 total_amount=total_cost,
-#                 shipping_handling=shipping_charge + handling_charge,
-#                 order_number=str(uuid.uuid4()),
-#                 status="Ordered",
-#             )
-#
-#             # Create order items and update available quantities
-#             for item in cart_items:
-#                 product = item.part
-#                 if product.available_quantity >= item.quantity:
-#                     product.available_quantity -= item.quantity  # Decrement here
-#                     product.save()
-#
-#                     # Add to order items
-#                     OrderItem.objects.create(
-#                         order=order,
-#                         product=product,
-#                         quantity=item.quantity,
-#                         total_price=item.total_price,
-#                     )
-#                 else:
-#                     messages.error(request, f"Insufficient stock for {product.description}.")
-#                     return redirect('cart_detail')
-#
-#             # Clear the user's cart
-#             cart_items.delete()
-#
-#             # Confirmation message
-#             messages.success(request, f"Order {order.order_number} placed successfully!")
-#             return redirect('part-detail')
-#         else:
-#             # Form errors
-#             messages.error(request, "There was an error with your form. Please check your inputs.")
-#     else:
-#         # Display form with cart details
-#         form = CheckoutForm()
-#
-#     context = {
-#         'form': form,
-#         'cart_items': cart_items,
-#         'total_price': total_price,
-#         'shipping_charge': shipping_charge,
-#         'handling_charge': handling_charge,
-#         'total_cost': total_cost,
-#     }
-#     return render(request, 'checkout.html', context)
-
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from .models import Order
-
-# Warehouse Page View
-from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from .models import Order
-
-# def warehouse_page(request):
-#     # Check if the user is a warehouse worker
-#     # if request.session.get('username') != 'warehouse':  # Replace with the warehouse worker's username
-#     #     messages.error(request, "Unauthorized access.")
-#     #     return redirect('login')
-#
-#     if request.method == 'POST':
-#         order_id = request.POST.get('order_id')
-#         new_status = request.POST.get('status')
-#         try:
-#             order = get_object_or_404(Order, id=order_id)
-#             if new_status in dict(Order.STATUS_CHOICES):  # Validate status
-#                 order.status = new_status
-#                 order.save()
-#                 return JsonResponse({'success': True, 'message': f"Order {order.order_number} status updated to {new_status}."})
-#             else:
-#                 return JsonResponse({'success': False, 'message': "Invalid status."})
-#         except Exception as e:
-#             return JsonResponse({'success': False, 'message': str(e)})
-#
-#     # Fetch all orders for display
-#     orders = Order.objects.all()
-#     return render(request, 'warehouse_page.html', {'orders': orders})
-
 from django.core.mail import send_mail
 from django.conf import settings
 from django.http import JsonResponse
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from .models import Order
 
 def warehouse_page(request):
-    # Check if the user is a warehouse worker
-    # if request.session.get('username') != 'warehouse_worker':  # Replace with the warehouse worker's username
-    #     messages.error(request, "Unauthorized access.")
-    #     return redirect('login')
 
     if request.method == 'POST':
         order_id = request.POST.get('order_id')
@@ -1061,9 +443,6 @@ def warehouse_page(request):
     orders = Order.objects.all()
     return render(request, 'warehouse_page.html', {'orders': orders})
 
-from django.shortcuts import render, get_object_or_404
-from .models import Order, OrderItem
-
 def warehouse_orders(request):
     """
     View to list all orders.
@@ -1071,11 +450,7 @@ def warehouse_orders(request):
     orders = Order.objects.all().order_by('-created_at')  # List orders, newest first
     return render(request, 'warehouse_orders.html', {'orders': orders})
 
-from django.shortcuts import render, get_object_or_404
-from .models import Order, OrderItem
-
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
+from django.shortcuts import redirect
 from .models import Order, OrderItem
 from .forms import OrderItemUpdateForm
 
@@ -1104,27 +479,6 @@ def order_details(request, order_id):
     return render(request, 'order_details.html', {'order': order, 'forms': forms})
 
 
-
-# Update Order Status
-# def update_order_status(request, order_id):
-#     # Check if user is a warehouse worker
-#     if request.session.get('username') != 'warehouse_worker':
-#         messages.error(request, "Unauthorized access.")
-#         return redirect('login')
-#
-#     order = get_object_or_404(Order, id=order_id)
-#
-#     if request.method == 'POST':
-#         new_status = request.POST.get('status')
-#         if new_status in dict(Order.STATUS_CHOICES):
-#             order.status = new_status
-#             order.save()
-#             messages.success(request, f"Order {order.order_number} status updated to {new_status}.")
-#         else:
-#             messages.error(request, "Invalid status.")
-#     return redirect('warehouse_page')
-
-
 from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
 from django.http import HttpResponseRedirect
@@ -1149,35 +503,6 @@ def manage_products(request):
         return HttpResponseRedirect(reverse('manage_products'))  # Refresh the page
 
     return render(request, 'manage_products.html', {'products': products, 'query': query})
-
-# from django.shortcuts import render, get_object_or_404, redirect
-# from .models import Product
-# from django.contrib import messages
-#
-# def manage_products(request):
-#     # Filter products if search query is provided
-#     search_query = request.GET.get('search', '')
-#     products = Product.objects.all()
-#     if search_query:
-#         products = products.filter(
-#             description__icontains=search_query
-#         ) | products.filter(
-#             number__icontains=search_query
-#         )
-#
-#     return render(request, 'manage_products.html', {'products': products})
-#
-# def update_product_quantity(request, product_id):
-#     if request.method == 'POST':
-#         product = get_object_or_404(Product, id=product_id)
-#         new_quantity = request.POST.get('available_quantity')
-#         if new_quantity.isdigit() and int(new_quantity) >= 0:
-#             product.available_quantity = int(new_quantity)
-#             product.save()
-#             messages.success(request, f"Updated quantity for {product.description}.")
-#         else:
-#             messages.error(request, "Invalid quantity.")
-#     return redirect('manage_products')
 
 
 def purchase_success(request):
