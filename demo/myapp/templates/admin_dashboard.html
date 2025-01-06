@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Admin Dashboard</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin_orders' %}">Manage Orders</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'manage_charges' %}">Shipping & Handling</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="jumbotron text-center bg-info text-white">
+            <h1 class="display-4">Welcome, Admin!</h1>
+            <p class="lead">Manage orders, products, and shipping charges efficiently.</p>
+            <hr class="my-4">
+            <p>Click the buttons below to navigate to specific sections.</p>
+            <a href="{% url 'manage_charges' %}" class="btn btn-light btn-lg">Manage Shipping & Handling</a>
+            <a href="{% url 'admin_orders' %}" class="btn btn-secondary btn-lg">Manage Orders</a>
+        </div>
+
+        <div class="row text-center mt-4">
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="card-title">Orders</h5>
+                        <p class="card-text">View, update, and manage all orders from customers.</p>
+                        <a href="{% url 'admin_orders' %}" class="btn btn-primary">Manage Orders</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="card-title">Shipping Charges</h5>
+                        <p class="card-text">Update global shipping and handling charges dynamically.</p>
+                        <a href="{% url 'manage_charges' %}" class="btn btn-info">Manage Charges</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="card-title">Products</h5>
+                        <p class="card-text">Add, update, and manage your inventory seamlessly.</p>
+                        <a href="{% url 'manage_products' %}" class="btn btn-success">Manage Products</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-3 mt-5">
+        <p class="mb-0">Admin Dashboard © 2024 | Designed for Efficiency</p>
+    </footer>
+
+    <script>
+        $(document).ready(function () {
+            $('.card').hover(
+                function () {
+                    $(this).addClass('shadow-lg');
+                },
+                function () {
+                    $(this).removeClass('shadow-lg');
+                }
+            );
+        });
+    </script>
+</body>
+</html>

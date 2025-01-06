@@ -1,69 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Checkout</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin-top: 50px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+        .summary-box {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Checkout</h2>
-    <form method="post" id="checkout-form">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit">Submit Payment</button>
-      <div id="loading-spinner" style="display: none;">
-        <div role="status">
-          <span>Processing...</span>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h2>Checkout</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" novalidate id="checkoutForm">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                {{ form.as_p }}
+                            </div>
+                            <div class="summary-box">
+                                <h4 class="text-center">Order Summary</h4>
+                                <p><strong>Total Price:</strong> $<span id="totalPrice">{{ total_price }}</span></p>
+                                <p><strong>Shipping Charge:</strong> $<span id="shippingCharge">{{ shipping_charge }}</span></p>
+                                <p><strong>Handling Charge:</strong> $<span id="handlingCharge">{{ handling_charge }}</span></p>
+                                <p class="font-weight-bold"><strong>Total Cost:</strong> $<span id="totalCost">{{ total_cost }}</span></p>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block mt-4">Complete Purchase</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
-        <p>Processing your payment, please wait...</p>
-      </div>
-    </form>
-
-    <div id="result"></div>
+    </div>
 
     <script>
-      document.getElementById('checkout-form').onsubmit = async function(e) {
-        e.preventDefault();
-
-        // Display loading spinner
-        document.getElementById('loading-spinner').style.display = 'block';
-
-        // Clear previous results
-        const resultDiv = document.getElementById('result');
-        resultDiv.innerHTML = '';
-        resultDiv.style.display = 'none';
-
-        const formData = new FormData(this);
-
-        const response = await fetch("", {
-          method: "POST",
-          body: formData,
+        document.getElementById("checkoutForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let confirmation = confirm("Are you sure you want to complete the purchase?");
+            if (confirmation) {
+                this.submit();
+            }
         });
-
-        const result = await response.json();
-
-        // Hide loading spinner
-        document.getElementById('loading-spinner').style.display = 'none';
-
-        if (result.status === "success") {
-          const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true };
-          const formattedDateTime = new Date(result.transaction_time).toLocaleString('en-US', options);
-
-          resultDiv.innerHTML = `
-            <p>${result.message}</p>
-            <p><strong>Authorization Number:</strong> ${result.authorization_number}</p>
-            <p><strong>Transaction Date and Time:</strong> ${formattedDateTime}</p>
-          `;
-        } else {
-          resultDiv.innerHTML = `
-            <p>${result.message}</p>
-          `;
-        }
-
-        resultDiv.style.display = 'block';
-      }
     </script>
-  </div>
 </body>
 </html>

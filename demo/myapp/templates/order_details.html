@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Details</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Order Details</h1>
+        <h3>Order Number: {{ order.order_number }}</h3>
+        <p><strong>Customer Name:</strong> {{ order.customer_name }}</p>
+        <p><strong>Email:</strong> {{ order.customer_email }}</p>
+        <p><strong>Shipping Address:</strong> {{ order.customer_address }}</p>
+        <p><strong>Total Amount:</strong> ${{ order.total_amount }}</p>
+        <p><strong>Shipping & Handling:</strong> ${{ order.shipping_handling }}</p>
+        <p><strong>Status:</strong> {{ order.status }}</p>
+        <p><strong>Order Date:</strong> {{ order.created_at }}</p>
+
+        <h3>Order Items</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Total Price</th>
+                        <th>Shipping Label</th>
+                        <th>Invoice Label</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item, form in forms %}
+                    <tr>
+                        <td>{{ item.product.description }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>${{ item.total_price }}</td>
+                        <td>{{ form.shipping_label }}</td>
+                        <td>{{ form.invoice_label }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" class="btn btn-primary">Update Order Items</button>
+        </form>
+        <a href="{% url 'warehouse_orders' %}" class="btn btn-secondary">Back to Orders</a>
+    </div>
+</body>
+</html>

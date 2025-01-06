@@ -1,100 +1,84 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from .models import Part, CartItem, CustomUser
-from django.utils import timezone
-import pytz
 import json
 import uuid
 import requests
 from datetime import datetime
-from django.shortcuts import render
 from django.http import JsonResponse
 from .forms import CheckoutForm
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import Part, Product, CartItem, CustomUser,Order, OrderItem, Transaction
 
 
-# # Part Detail View
-# def part_detail(request):
-#     # Check if the user is logged in by validating the session
-#     if not request.session.get('user_id'):
-#         messages.error(request, "You need to log in first.")
-#         return redirect('login')
-#
-#     # Fetch all parts from the database
-#     parts = Part.objects.all()
-#
-#     # Get the current time in UTC
-#     utc_time = timezone.now()
-#
-#     # Define the Chicago timezone using pytz
-#     chicago_tz = pytz.timezone('America/Chicago')
-#
-#     # Convert UTC time to Chicago timezone
-#     chicago_time = utc_time.astimezone(chicago_tz)
-#
-#     return render(request, 'part_detail.html', {
-#         'parts': parts,             # Pass all parts to the template
-#         'current_time': chicago_time,  # Pass the converted time to the template
-#         'username': request.session.get('username'),  # Pass the logged-in user's username
-#     })
-
-from django.shortcuts import render
-from .models import Part
+def sync_products_from_legacy():
+    """
+    Syncs parts from the legacy database to the Product table.
+    """
+    legacy_parts = Part.objects.using('legacy').all()
+    for part in legacy_parts:
+        Product.objects.get_or_create(
+            number=part.number,
+            defaults={
+                'description': part.description,
+                'price': part.price,
+                'weight': part.weight,
+                'picture_url': part.picture_url,
+                'available_quantity': 100,  # Set default available quantity
+            }
+        )
 
 def part_detail(request):
-    # Fetch all parts from the legacy database
-    parts = Part.objects.using('legacy').all()
+    """
+    Displays available products with search functionality.
+    """
+    query = request.GET.get('q', '')  # Get the search query from the request
+    if query:
+        products = Product.objects.filter(description__icontains=query)  # Filter products by description
+    else:
+        products = Product.objects.all()  # Display all products if no query
 
-    return render(request, 'part_detail.html', {
-        'parts': parts,
-    })
+    return render(request, 'part_detail.html', {'products': products, 'query': query})
 
 
-# Add to Cart View
 def add_to_cart(request, part_id):
-    # Ensure the user is logged in
+    """
+    Add a part to the cart without altering the available_quantity yet.
+    """
     if not request.session.get('user_id'):
         messages.error(request, "You need to log in first to add items to the cart.")
         return redirect('login')
 
-    # Fetch the part using the provided part ID
-    part = get_object_or_404(Part, number=part_id)
-
-    # Fetch the logged-in user
     user_id = request.session.get('user_id')
     user = get_object_or_404(CustomUser, id=user_id)
+    part = get_object_or_404(Product, id=part_id)
 
-    # Check if the item is already in the cart for this user
+    if part.available_quantity < 1:
+        messages.error(request, f"{part.description} is out of stock.")
+        return redirect('part-detail')
+
     cart_item, created = CartItem.objects.get_or_create(part=part, user=user)
-    if not created:
-        # If the item is already in the cart, display a message
-        messages.info(request, f"{part.description} is already in the cart!")
-    else:
-        # If the item is not in the cart, save it
+    if created:
         cart_item.save()
         messages.success(request, f"{part.description} was added to the cart.")
+    else:
+        messages.info(request, f"{part.description} is already in your cart.")
 
     return redirect('cart_detail')
 
 
-# Cart Detail View
 def cart_detail(request):
-    # Ensure the user is logged in
+    """
+    Displays cart items for the logged-in user.
+    """
     if not request.session.get('user_id'):
         messages.error(request, "You need to log in to view the cart.")
         return redirect('login')
 
-    # Fetch the logged-in user
     user_id = request.session.get('user_id')
     user = get_object_or_404(CustomUser, id=user_id)
-
-    # Fetch cart items for the logged-in user
     cart_items = CartItem.objects.filter(user=user)
     total_price = sum(item.total_price for item in cart_items)
 
-    return render(request, 'cart_detail.html', {
-        'cart_items': cart_items,
-        'total_price': total_price,
-    })
+    return render(request, 'cart_detail.html', {'cart_items': cart_items, 'total_price': total_price})
 
 
 # Increase Quantity View
@@ -118,34 +102,22 @@ def decrease_quantity(request, item_id):
         messages.info(request, f"{cart_item.part.description} removed from the cart.")
     return redirect('cart_detail')
 
-
-# Login View
-# def login_view(request):
-#     if request.method == 'POST':
-#         username = request.POST.get('username')
-#         password = request.POST.get('password')
-#
-#         try:
-#             user = CustomUser.objects.get(username=username, password=password)
-#             request.session['user_id'] = user.id
-#             request.session['username'] = user.username
-#             messages.success(request, f"Welcome, {user.name}!")
-#             return redirect('part-detail')
-#         except CustomUser.DoesNotExist:
-#             messages.error(request, "Invalid credentials. Please register.")
-#             return redirect('register')
-#
-#     return render(request, 'login.html')
-
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from .models import CustomUser
+def admin_dashboard(request):
+    return render(request, 'admin_dashboard.html')  # Create a template for the admin dashboard
 
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
 
+        if username == "admin" and password == "admin123":
+            messages.success(request, "Welcome, Admin!")
+            return redirect('admin_dashboard')  # Define a URL or view for Admin Dashboard
+        elif username == "warehouse" and password == "warehouse123":
+            messages.success(request, "Welcome, Warehouse Worker!")
+            return redirect('warehouse_page')  # Define a URL or view for Warehouse Dashboard
+
+        # Standard user login process
         try:
             # Check if the username exists
             user = CustomUser.objects.get(username=username)
@@ -168,8 +140,6 @@ def login_view(request):
             return redirect('register')  # Redirect to the register page
 
     return render(request, 'login.html')
-
-
 
 # Register View
 def register(request):
@@ -201,126 +171,342 @@ def register(request):
 
     return render(request, 'register.html')
 
-
 # Logout View
 def custom_logout(request):
     request.session.flush()
     messages.success(request, "You have been logged out.")
     return redirect('part-detail')
 
+from .models import CartItem, Order, OrderItem, Product, CustomUser
+import uuid
 
-# Checkout View
+from decimal import Decimal
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from .models import CartItem, CustomUser, Order, OrderItem
+from .forms import CheckoutForm
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from decimal import Decimal
+from .models import Order
+
+def order_success(request):
+    return render(request, 'order_success.html')
+
+
+from decimal import Decimal
+from django.db.models import Avg
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Order
+
 def checkout(request):
+    # Check if the user is logged in
+    user_id = request.session.get('user_id')
+    if not user_id:
+        messages.error(request, "You need to log in to proceed with checkout.")
+        return redirect('login')
+
+    user = get_object_or_404(CustomUser, id=user_id)
+
+    # Fetch cart items for the logged-in user
+    cart_items = CartItem.objects.filter(user=user)
+    if not cart_items.exists():
+        messages.error(request, "Your cart is empty.")
+        return redirect('cart_detail')
+
+    # Set default values for shipping and handling charges
+    default_shipping_charge = Decimal("10.00")  # Default shipping charge
+    default_handling_charge = Decimal("5.00")  # Default handling charge
+
+    # Calculate charges using CartItem model methods
+    total_price = sum(item.total_price for item in cart_items)  # Total price of items
+    shipping_charge = sum(item.calculate_shipping_charge() for item in cart_items)  # Dynamic shipping charge
+    handling_charge = sum(item.calculate_handling_charge() for item in cart_items)  # Dynamic handling charge
+
+    # If charges are zero, set them to default values
+    if shipping_charge == 0:
+        shipping_charge = default_shipping_charge
+    if handling_charge == 0:
+        handling_charge = default_handling_charge
+
+    shipping_handling = shipping_charge + handling_charge  # Combine shipping and handling
+    total_cost = total_price + shipping_handling  # Total cost
+
     if request.method == 'POST':
         form = CheckoutForm(request.POST)
         if form.is_valid():
-            name = "Minhaz Patel"
-            credit_card_number = "6011123443211234"
-            expiration_date = form.cleaned_data['expiration_date']
-            amount = format(form.cleaned_data['amount'], '.2f')
+            # Process valid form data
+            name = form.cleaned_data['name']
+            email = form.cleaned_data['email']
+            address = form.cleaned_data['address']
 
-            vendor_id = 'VE001-99'
-            transaction_id = str(uuid.uuid4())
+            # Create an order
+            order = Order.objects.create(
+                customer_name=name,
+                customer_email=email,
+                customer_address=address,
+                total_amount=total_cost,
+                shipping_handling=shipping_handling,  # Correct field name
+                order_number=str(uuid.uuid4()),
+                status="Ordered",
+            )
 
-            data = {
-                'vendor': vendor_id,
-                'trans': transaction_id,
-                'cc': credit_card_number,
-                'name': name,
-                'exp': expiration_date,
-                'amount': amount,
-            }
+            # Create order items and update available quantities
+            for item in cart_items:
+                product = item.part
+                if product.available_quantity >= item.quantity:
+                    product.available_quantity -= item.quantity  # Decrement here
+                    product.save()
 
-            url = 'http://blitz.cs.niu.edu/CreditCard/'
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            }
-            response = requests.post(url, headers=headers, data=json.dumps(data))
-
-            if response.status_code == 200:
-                result = response.json()
-                authorization_number = result.get('authorization')
-                if authorization_number:
-                    transaction_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    return JsonResponse({
-                        'status': 'success',
-                        'authorization_number': authorization_number,
-                        'transaction_time': transaction_time,
-                        'message': 'Payment authorized successfully!'
-                    })
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Failed to connect to the authorization service.'})
-
-    return render(request, 'checkout.html', {'form': CheckoutForm()})
-
-
-def checkout(request):
-    if request.method == 'POST':
-        form = CheckoutForm(request.POST)
-        if form.is_valid():
-            # Use your name and Z-id for the cardholder name as required
-            name = "Minhaz Patel, z1961329" # Replace with your name Ibrahin Al Azher, Z2006888 6011 1234 4321 1234
-            credit_card_number = "6011123443211234"  # Replace with valid test card number
-            expiration_date = form.cleaned_data['expiration_date']
-            amount = format(form.cleaned_data['amount'], '.2f')
-
-            # Generate unique vendor and transaction IDs
-            vendor_id = 'VE001-99'
-            transaction_id = str(uuid.uuid4())
-
-            # Data payload for the authorization request
-            data = {
-                'vendor': vendor_id,
-                'trans': transaction_id,
-                'cc': credit_card_number,
-                'name': name,
-                'exp': expiration_date,
-                'amount': amount,
-            }
-
-            # Send the POST request to the credit card authorization system
-            url = 'http://blitz.cs.niu.edu/CreditCard/'
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            }
-            response = requests.post(url, headers=headers, data=json.dumps(data))
-
-            # Process the response
-            print("API Response Status Code:", response.status_code)
-            print("API Response JSON:", response.json())
-
-            if response.status_code == 200:
-                result = response.json()
-
-                if 'errors' in result:
-                    # Display the error message if there is an error
-                    print("Error in transaction:", result['errors'])
-                    return JsonResponse({'status': 'error', 'message': result['errors']})
+                    # Add to order items
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        quantity=item.quantity,
+                        total_price=item.total_price,
+                    )
                 else:
-                    authorization_number = result.get('authorization')
-                    if authorization_number:
-                        transaction_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        print("Authorization Code:", authorization_number)
-                        print("Transaction Time:", transaction_time)
-                        return JsonResponse({
-                            'status': 'success',
-                            'authorization_number': authorization_number,
-                            'transaction_time': transaction_time,
-                            'message': 'Payment authorized successfully!'
-                        })
-                    else:
-                        print("Authorization number missing in response:", result)
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Authorization number missing in response',
-                            'response': result
-                        })
-            else:
-                print("Failed to connect. Status code:", response.status_code, "Response:", response.text)
-                return JsonResponse({'status': 'error', 'message': 'Failed to connect to the authorization service.'})
+                    messages.error(request, f"Insufficient stock for {product.description}.")
+                    return redirect('cart_detail')
+
+            # Clear the user's cart
+            cart_items.delete()
+
+            subject = f"Order Confirmation - {order.order_number}"
+            message = (
+                f"Dear {name},\n\n"
+                f"Thank you for your order!\n\n"
+                f"Order Details:\n"
+                f"Order Number: {order.order_number}\n"
+                f"Total Amount: ${total_cost:.2f}\n"
+                f"Shipping Address: {address}\n\n"
+                f"We will notify you once your order is shipped.\n\n"
+                f"Thank you for shopping with us!"
+            )
+            from_email = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [email]
+
+            try:
+                send_mail(subject, message, from_email, recipient_list)
+                messages.success(request, f"Order {order.order_number} placed successfully! Confirmation email sent.")
+            except Exception as e:
+                messages.error(request, f"Order placed but email could not be sent: {e}")
+
+            # return redirect('part-detail')
+            return redirect('order_success')
+        else:
+            # Form errors
+            messages.error(request, "There was an error with your form. Please check your inputs.")
     else:
+        # Display form with cart details
         form = CheckoutForm()
 
-    return render(request, 'checkout.html', {'form': form})
+    context = {
+        'form': form,
+        'cart_items': cart_items,
+        'total_price': total_price,
+        'shipping_charge': shipping_charge,
+        'handling_charge': handling_charge,
+        'total_cost': total_cost,
+    }
+    return render(request, 'checkout.html', context)
+
+from datetime import datetime
+
+def admin_orders(request):
+    """
+    View to display all orders and support filtering based on date range, status, or price range.
+    """
+    # Fetch filters from GET parameters
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    status = request.GET.get('status')
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+
+    # Base queryset
+    orders = Order.objects.all()
+
+    # Apply filters
+    if start_date and end_date:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        orders = orders.filter(created_at__date__range=(start, end))
+
+    if status:
+        orders = orders.filter(status=status)
+
+    if min_price:
+        orders = orders.filter(total_amount__gte=min_price)
+
+    if max_price:
+        orders = orders.filter(total_amount__lte=max_price)
+
+    context = {
+        'orders': orders,
+        'STATUS_CHOICES': Order.STATUS_CHOICES,
+    }
+
+    return render(request, 'admin_orders.html', context)
+
+def admin_order_details(request, order_id):
+    """
+    View to display details of a specific order including its items.
+    """
+    order = get_object_or_404(Order, id=order_id)
+    order_items = order.items.all()  # Related OrderItem objects
+
+    context = {
+        'order': order,
+        'order_items': order_items,
+    }
+
+    return render(request, 'admin_order_details.html', context)
+
+from .models import CartItem
+from decimal import Decimal
+
+def manage_charge(request):
+    """
+    View to allow the admin to manage shipping and handling charges.
+    """
+    # Default values for charges
+    current_shipping_charge = Decimal("10.00")  # Default shipping charge
+    current_handling_charge = Decimal("5.00")  # Default handling charge
+
+    if request.method == "POST":
+        # Get values from the form
+        shipping_charge = request.POST.get('shipping_charge')
+        handling_charge = request.POST.get('handling_charge')
+
+        try:
+            # Update charges globally for all cart items
+            CartItem.objects.update(
+                shipping_charge=Decimal(shipping_charge),
+                handling_charge=Decimal(handling_charge),
+            )
+            messages.success(request, "Shipping and handling charges updated successfully.")
+        except Exception as e:
+            messages.error(request, f"An error occurred: {e}")
+
+    # Get the charges from any cart item (assuming charges are the same for all cart items)
+    cart_item = CartItem.objects.first()
+    if cart_item:
+        current_shipping_charge = cart_item.shipping_charge
+        current_handling_charge = cart_item.handling_charge
+
+    context = {
+        'current_shipping_charge': current_shipping_charge,
+        'current_handling_charge': current_handling_charge,
+    }
+    return render(request, 'manage_charges.html', context)
+
+from django.core.mail import send_mail
+from django.conf import settings
+from django.http import JsonResponse
+
+def warehouse_page(request):
+
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        new_status = request.POST.get('status')
+        try:
+            order = get_object_or_404(Order, id=order_id)
+            if new_status in dict(Order.STATUS_CHOICES):  # Validate status
+                order.status = new_status
+                order.save()
+
+                # Send email if status is "Shipped"
+                if new_status == "Shipped":
+                    send_mail(
+                        subject="Order Shipped: {}".format(order.order_number),
+                        message=(
+                            f"Dear {order.customer_name},\n\n"
+                            f"Your order {order.order_number} has been shipped.\n\n"
+                            f"Thank you for shopping with us!\n\n"
+                            f"Best regards,\nYour Store Team"
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[order.customer_email],
+                        fail_silently=False,
+                    )
+
+                return JsonResponse({'success': True, 'message': f"Order {order.order_number} status updated to {new_status}."})
+            else:
+                return JsonResponse({'success': False, 'message': "Invalid status."})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+    # Fetch all orders for display
+    orders = Order.objects.all()
+    return render(request, 'warehouse_page.html', {'orders': orders})
+
+def warehouse_orders(request):
+    """
+    View to list all orders.
+    """
+    orders = Order.objects.all().order_by('-created_at')  # List orders, newest first
+    return render(request, 'warehouse_orders.html', {'orders': orders})
+
+from django.shortcuts import redirect
+from .models import Order, OrderItem
+from .forms import OrderItemUpdateForm
+
+def order_details(request, order_id):
+    """
+    View to display and update details of a specific order.
+    """
+    order = get_object_or_404(Order, id=order_id)
+    order_items = OrderItem.objects.filter(order=order)
+
+    if request.method == 'POST':
+        for item in order_items:
+            form = OrderItemUpdateForm(request.POST, instance=item, prefix=f'item-{item.id}')
+            if form.is_valid():
+                form.save()
+                messages.success(request, f"Order item {item.id} updated successfully!")
+            else:
+                messages.error(request, f"Failed to update order item {item.id}. Check your inputs.")
+        return redirect('order_details', order_id=order_id)
+
+    forms = [
+        (item, OrderItemUpdateForm(instance=item, prefix=f'item-{item.id}'))
+        for item in order_items
+    ]
+
+    return render(request, 'order_details.html', {'order': order, 'forms': forms})
+
+
+from django.shortcuts import render, get_object_or_404
+from django.contrib import messages
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from .models import Product
+
+def manage_products(request):
+    query = request.GET.get('q', '')  # Get search query from the URL
+    products = Product.objects.all()
+
+    # Filter products by description or number
+    if query:
+        products = products.filter(description__icontains=query) | products.filter(number__icontains=query)
+
+    if request.method == 'POST':
+        product_id = request.POST.get('product_id')
+        new_quantity = request.POST.get('available_quantity')
+        product = get_object_or_404(Product, id=product_id)
+        product.available_quantity = new_quantity
+        product.save()
+        messages.success(request, f"Updated quantity for {product.description} to {new_quantity}.")
+        return HttpResponseRedirect(reverse('manage_products'))  # Refresh the page
+
+    return render(request, 'manage_products.html', {'products': products, 'query': query})
+
+
+def purchase_success(request):
+    return render(request, 'purchase_success.html')
+
+def purchase_failure(request):
+    return render(request, 'purchase_failure.html')

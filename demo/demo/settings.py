@@ -16,7 +16,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'myapp',
-    # 'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -62,7 +61,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'csci_513_database',
         'USER': 'csci_513_proj',
-        'PASSWORD': 'Muntazir123@',
+        'PASSWORD': '',
         'HOST': 'localhost',
         'PORT': '3306',
     },
@@ -87,6 +86,13 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'ibrahimalazhar264@gmail.com'
+EMAIL_HOST_PASSWORD = 'yugg qsam qewb wyng'
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
 
 
 
